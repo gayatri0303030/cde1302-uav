@@ -1,0 +1,13 @@
+Trajectory experiment: box 2.30 m ahead x 1.50 m wide, cruise 0.2 m/s, accel 0.12 m/s^2, height 0.80 m; ends with a 0.15 m creep ahead at 0.04 m/s
+yaw versions: fly with --yaw-follow on the yaw-follow firmware (nose along the path, <= 1 rad/s)
+camera model (mapper_config_current.yaml): 23 deg below horizontal, 9.5 cm ahead, range limit 1.50 m, 8 fps; tag 'expected' = inside the usable view in >= 3 frames
+
+trajectory                      length   time  vmax        x range         y range  end nose  expected tags (frames in view)
+E1_ellipse                       6.19m  38.9s 0.20  +0.00..+2.30  -0.75..+0.75     +0.0d   4/4  (0:123, 1:93, 2:37, 3:35)
+E2_lawnmower_vertical           11.29m  67.7s 0.20  +0.00..+2.30  -0.75..+0.75     +0.0d   4/4  (0:183, 1:151, 2:63, 3:77)
+E3_lawnmower_horizontal          9.64m  59.5s 0.20  +0.00..+2.30  -0.75..+0.75     +0.0d   4/4  (0:144, 1:81, 2:56, 3:99)
+E7_rectangle                     7.32m  44.6s 0.20  +0.00..+2.30  -0.75..+0.75     +0.0d   4/4  (0:139, 1:108, 2:33, 3:33)
+E4_ellipse_yaw                   6.19m  38.9s 0.20  +0.00..+2.30  -0.75..+0.75     +0.0d   4/4  (0:68, 1:88, 2:26, 3:32)
+E5_lawnmower_vertical_yaw       11.29m  67.7s 0.20  +0.00..+2.30  -0.75..+0.75     +0.0d   4/4  (0:94, 1:84, 2:34, 3:50)
+E6_lawnmower_horizontal_yaw      9.64m  59.5s 0.20  +0.00..+2.30  -0.75..+0.75     +0.0d   4/4  (0:124, 1:92, 2:14, 3:46)
+E8_rectangle_yaw                 7.32m  44.6s 0.20  +0.00..+2.30  -0.75..+0.75     +0.0d   4/4  (0:90, 1:63, 2:29, 3:33)

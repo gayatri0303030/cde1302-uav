@@ -1,0 +1,246 @@
+{
+  "opencv_version": "4.14.0",
+  "model": "opencv_pinhole",
+  "feature_detector": "chessboard",
+  "image_width": 320,
+  "image_height": 240,
+  "camera_matrix": [
+    [
+      183.29255671332464,
+      0.0,
+      161.0350214076591
+    ],
+    [
+      0.0,
+      182.85805282226417,
+      120.12225139955437
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "dist_coeffs": [
+    -0.09528473439616442,
+    0.10853822148508256,
+    -0.0003212610220958575,
+    0.002416692169986992,
+    -0.045389390933938116
+  ],
+  "dist_coeffs_order": [
+    "k1",
+    "k2",
+    "p1",
+    "p2",
+    "k3"
+  ],
+  "fx": 183.29255671332464,
+  "fy": 182.85805282226417,
+  "cx": 161.0350214076591,
+  "cy": 120.12225139955437,
+  "rms_reprojection_error_px": 0.29926377816492394,
+  "num_views": 29,
+  "views": [
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163827_794619.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.2017194628715515
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163831_880225.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.18195033073425293
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163835_896686.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.2280987650156021
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163839_921211.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.23008902370929718
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163844_003823.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.2020801454782486
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163848_052363.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.21292224526405334
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163856_175705.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.232358917593956
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163904_356596.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.38555699586868286
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163908_418943.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.2875138223171234
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163916_522275.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.2393907755613327
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163920_653009.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.3443015217781067
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163924_700720.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.34841302037239075
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163928_759642.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.25890466570854187
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163932_803402.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.25497502088546753
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163940_910894.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.36806511878967285
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163944_970252.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.24909493327140808
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163949_112111.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.26947835087776184
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_163957_160295.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.4508541226387024
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_164001_183990.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.4268588721752167
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_164005_228131.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.3924840986728668
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_164009_272209.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.26972243189811707
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_164017_374569.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.3520279824733734
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_164021_436022.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.22105805575847626
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_164025_482586.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.2466549575328827
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_164029_530806.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.4081234931945801
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_164033_583167.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.23916806280612946
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_164037_648514.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.3575325906276703
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_164041_689346.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.2890521287918091
+    },
+    {
+      "image": "/home/maxwell-guico/cde1302/calibration_images/esp32_camera_20261022_164045_740108.png",
+      "corners": 70,
+      "rms_reprojection_error_px": 0.25784316658973694
+    }
+  ],
+  "skipped": [],
+  "board": {
+    "squares_x": 11,
+    "squares_y": 8,
+    "square_length_mm": 15.0,
+    "marker_length_mm": 11.0,
+    "dictionary": "DICT_6X6_1000",
+    "legacy_pattern": false,
+    "marker_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43
+    ]
+  }
+}

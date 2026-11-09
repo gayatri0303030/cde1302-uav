@@ -1,0 +1,88 @@
+--- /tmp/claude-0/-home-claude/385decca-77cb-5643-9526-3c7b917fd4de/scratchpad/zip_yaw/main/nav_task.c	2026-10-26 04:29:07.902171152 +0000
++++ main/nav_task.c	2026-11-02 04:12:39.444867605 +0000
+@@ -47,6 +47,8 @@
+ static float      s_traj_org[3];   /* odom position where playback started        */
+ static float      s_traj_yaw;
+ static bool       s_traj_yaw_follow;   /* 1 = nose follows the path direction (CMD_TRAJ_START flag) */
++static uint16_t   s_traj_out_from;     /* points [from, to): nose 90 deg right of travel (flag bit1) */
++static uint16_t   s_traj_out_to;       /* from == to = no outward window                            */
+ #define TRAJ_YAW_RATE_MAX 1.0f         /* rad/s, yaw-follow turn-rate limit                         */
+ static int64_t    s_traj_t0_us;
+ 
+@@ -257,12 +259,15 @@
+     float hz = 1000.0f / (float)s_traj_dt_ms;
+     const traj_pt_t *p0 = &s_traj[i], *p1 = &s_traj[i + 1];
+ 
+-    if (s_traj_yaw_follow) {
+-        /* Heading tangent to the path: NED heading = atan2(east, north) of this segment.
+-         * Hovers (no motion) keep the last heading; turn rate limited per 100 ms tick. */
++    bool in_out = (i >= (int)s_traj_out_from && i < (int)s_traj_out_to);
++    if (s_traj_yaw_follow || in_out) {
++        /* Heading tangent to the path: NED heading = atan2(east, north) of this segment, plus
++         * 90 deg (nose to the RIGHT of travel) inside the outward window.  Outside the window,
++         * without yaw-follow, the heading is held.  Hovers (no motion) keep the last heading;
++         * turn rate limited per 100 ms tick. */
+         float dx = p1->x - p0->x, dy = p1->y - p0->y;
+         if (dx * dx + dy * dy > 1e-8f) {
+-            float want = atan2f(dy, dx);
++            float want = atan2f(dy, dx) + (in_out ? 0.5f * (float)M_PI : 0.0f);
+             float d = want - s_traj_yaw;
+             while (d >  (float)M_PI) d -= 2.0f * (float)M_PI;
+             while (d < -(float)M_PI) d += 2.0f * (float)M_PI;
+@@ -461,7 +466,7 @@
+     if (playing) ESP_LOGW(TAG, "Trajectory chunk ignored — playing");
+ }
+ 
+-void nav_traj_start(uint8_t id, uint16_t dt_ms, uint8_t flags)
++void nav_traj_start(uint8_t id, uint16_t dt_ms, uint8_t flags, uint16_t out_from, uint16_t out_to)
+ {
+     drone_state_t st = mavlink_get_state();
+     bool flying = st.armed && st.custom_main_mode == PX4_MAIN_MODE_OFFBOARD
+@@ -482,6 +487,8 @@
+         s_traj_org[2] = st.z;
+         s_traj_yaw    = st.heading;
+         s_traj_yaw_follow = (flags & 0x01) != 0;
++        s_traj_out_from   = (flags & 0x02) ? out_from : 0;
++        s_traj_out_to     = (flags & 0x02) ? out_to   : 0;
+         s_traj_dt_ms  = dt_ms;
+         s_traj_t0_us  = esp_timer_get_time();
+         s_traj_id     = 0;              /* consume: a repeated START cannot replay */
+@@ -495,8 +502,9 @@
+     if (err) {
+         ESP_LOGW(TAG, "Trajectory start refused: %s", err);
+     } else {
+-        ESP_LOGI(TAG, "Trajectory start: %u pts @ %u ms from odom (%.2f, %.2f, %.2f)%s",
+-                 n, dt_ms, st.x, st.y, st.z, (flags & 0x01) ? ", yaw follows path" : "");
++        ESP_LOGI(TAG, "Trajectory start: %u pts @ %u ms from odom (%.2f, %.2f, %.2f)%s%s",
++                 n, dt_ms, st.x, st.y, st.z, (flags & 0x01) ? ", yaw follows path" : "",
++                 (flags & 0x02) ? ", nose outward in a window" : "");
+     }
+ }
+ 
+--- /tmp/claude-0/-home-claude/385decca-77cb-5643-9526-3c7b917fd4de/scratchpad/zip_yaw/main/nav_task.h	2026-10-26 04:29:07.902208142 +0000
++++ main/nav_task.h	2026-11-02 04:12:33.483770228 +0000
+@@ -90,7 +90,7 @@
+  * holding the current heading. Refused unless the upload is complete and the
+  * drone is armed in OFFBOARD. Each upload plays once. Ends in NAV_ARRIVED. */
+ /* flags bit0: nose follows the path direction (yaw tangent to the trajectory). */
+-void nav_traj_start(uint8_t id, uint16_t dt_ms, uint8_t flags);
++void nav_traj_start(uint8_t id, uint16_t dt_ms, uint8_t flags, uint16_t out_from, uint16_t out_to);
+ 
+ /* Thread-safe status snapshot. */
+ nav_status_t nav_get_status(void);
+--- /tmp/claude-0/-home-claude/385decca-77cb-5643-9526-3c7b917fd4de/scratchpad/zip_yaw/main/wifi_task.c	2026-10-26 04:29:07.902227077 +0000
++++ main/wifi_task.c	2026-11-02 04:12:33.483925122 +0000
+@@ -320,7 +320,12 @@
+     uint16_t dt_ms;
+     memcpy(&dt_ms, buf + 3, sizeof(dt_ms));
+     uint8_t flags = (len >= 6) ? buf[5] : 0;     /* optional: bit0 = yaw follows path */
+-    nav_traj_start(buf[2], dt_ms, flags);
++    uint16_t out_from = 0, out_to = 0;            /* optional: bit1 = nose outward for points [from, to) */
++    if (len >= 10) {
++        memcpy(&out_from, buf + 6, sizeof(out_from));
++        memcpy(&out_to,   buf + 8, sizeof(out_to));
++    }
++    nav_traj_start(buf[2], dt_ms, flags, out_from, out_to);
+ }
+ 
+ wifi_peer_list_t wifi_get_peers(void)

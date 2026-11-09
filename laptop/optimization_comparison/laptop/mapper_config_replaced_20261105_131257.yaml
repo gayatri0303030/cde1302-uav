@@ -1,0 +1,279 @@
+# Agent handoff configuration: GAUSS-NEWTON + GROUND TAGS
+# World/start origin is on the FLOOR. NED: flying up gives NEGATIVE Z.
+# All tag centres/corners are on Z=0. Drone poses remain fully 3D.
+# Tag black-square side is 0.12 m; verify the print with a ruler.
+# Camera matrix, distortion, mount measurements and tag size are parameters below.
+# 29 Oct: camera mount from the team's drawing (7.5 cm forward, 2.5 cm down, 25 deg from vertical = 65 deg pitch).
+# Other null measurements/survey values must still be filled.
+# The disabled known tag is a TEMPLATE, not actual survey information.
+# Load via yaml.safe_load (plus duplicate-key rejection/schema validation).
+
+schema_version: 2
+config_id: ground_tags_120mm_ned_gauss_newton_29_Oct
+units:
+  length: m
+  angle: rad
+  internal_time: ns
+allow_unverified_measurements: false
+frames:
+  telemetry_navigation: NED
+  world_output: ground_start_NED
+  drone_navigation_output: drone_centered_NED
+  physical_body: FRD
+  camera: opencv_optical_right_down_forward
+  transform_convention: T_A_B_maps_B_to_A_column_vectors
+  internal_quaternion_order: xyzw
+  internal_attitude_direction: body_to_navigation
+  navigation_to_true_ned_verified: false
+  start:
+    mode: explicit_ground_reference_event
+    event_file: start_event.json
+    axes: NED
+    subtract_initial_heading: false
+    input_positions_already_ground_start_relative: false
+    native_ground_origin_position_m: null
+    initial_body_height_above_floor_m: null
+    initial_body_height_sigma_m: null
+    ground_origin_directly_below_initial_body: true
+    missing_ground_datum_policy: error
+    notes: Set a surveyed native floor origin OR start native body pose plus measured height. Going up gives negative
+      world Z.
+# Physical camera calibration and full optical-to-body transform.
+camera:
+  camera_id: camera0
+  calibration_id: user_checkerboard_320x240
+  model: opencv_pinhole
+  width: 320
+  height: 240
+  pixels: raw_distorted
+  image_processing:
+    crop: null
+    resize: null
+    flip_x: false
+    flip_y: false
+    rotation_degrees: 0
+  K:
+  - [183.29255671332464, 0.0, 161.0350214076591]
+  - [0.0, 182.85805282226417, 120.12225139955437]
+  - [0.0, 0.0, 1.0]
+  distortion: [-0.09528473439616442, 0.10853822148508256, -0.0003212610220958575, 0.002416692169986992, -0.045389390933938116]
+  distortion_order: [k1, k2, p1, p2, k3]
+  calibration_rms_px: 0.29926377816492394
+  held_out_calibration_validation_complete: false
+  extrinsic_T_B_C:
+    # Set by set_camera_mount.py on 2026-11-02 02:46: camera optical centre 9.5 cm AHEAD of and
+    # 2.5 cm BELOW the PX4 body origin, lens 23.0 deg below the nose direction
+    # (67.0 deg from vertical).  Earlier mounts: mapper_config_29_Oct.yaml (7.5 cm, 65 deg).
+    # Body = FRD (x forward, y right, z down).  Camera = OpenCV optical (x image-right, y image-down,
+    # z out of the lens).  Columns of the matrix are the camera axes written in the body frame:
+    #   camera x (image right) = body +y (drone's right)
+    #   camera y (image down)  = (-sin23, 0, cos23)
+    #   camera z (lens axis)   = ( cos23, 0, sin23)
+    mount_id: drone5_mount_02_Nov_p23_f9.5cm
+    translation_m: [0.095, 0.0, 0.025]
+    rotation_matrix:
+    - [0.0, -0.39073112848927377, 0.9205048534524404]
+    - [1.0, 0.0, 0.0]
+    - [0.0, 0.9205048534524404, 0.39073112848927377]
+    rotation_description: "OpenCV optical (right/down/forward) to FRD body, 23 deg nose-down pitch (67 deg from vertical); matrix is authoritative, do not apply another tilt"
+    measurement_verified: false
+    translation_sigma_m: null
+    rotation_sigma_rad: null
+    body_origin_description: PX4 flight controller (IMU) centre
+    measurement_notes: "set_camera_mount.py 2026-11-02 02:46, lens 9.5 cm forward, 2.5 cm down, 23 deg below horizontal (measured on the drone)"
+# Physical tag dimensions: change here, never hardcode in the Python mapper.
+tag_geometry:
+  size_definition: outer_black_square_between_detected_border_corners_excluding_white_margin
+  default_size_m: 0.12
+  default_size_measured: false
+  default_size_sigma_m: null
+  unknown_tag_size_policy: use_explicit_default
+  per_tag: []
+  static_landmarks: true
+  default_size_source: user_specified_12cm_verify_print_measurement
+  ground_state_components: [x_m, y_m, theta_rad]
+  tag_id_unique_within_family: true
+# HARD geometric constraint: there is no free tag Z coordinate.
+ground:
+  world_z_m: 0.0
+  constraint: hard_by_state_parameterization
+  all_tags_flat_and_static: true
+  optimize_tag_z: false
+  optimize_tag_roll_pitch: false
+  survey_z_tolerance_m: 1.0e-06
+  notes: All centres and all corners have Z exactly 0 at initialization, every trial state, and output.
+# Starting values before GN: trace corner rays to the floor using telemetry height/attitude.
+initialization:
+  drone_poses: synchronized_mavlink_rebased_to_ground_start
+  unknown_tag_position: intersect_each_undistorted_corner_ray_with_ground_then_mean
+  unknown_tag_yaw: direct_2d_alignment_of_canonical_and_ground_corners
+  use_tag_size_for_ray_depth: false
+  use_tag_size_for_graph_corner_geometry: true
+  nonlinear_pnp_refinement: false
+  observations: well_conditioned_views_with_outlier_resistant_selection
+  minimum_unit_ray_down_component: 0.05
+  require_forward_ground_intersection: true
+  parallel_or_behind_camera_policy: reject_observation
+detector:
+  adapter: apriltag_c_host_shim
+  family_or_dictionary: tag16h5
+  corner_contract: apriltag_det_p0_p1_p2_p3
+  preserves_native_corner_order_verified: false
+  tag_identity: [family_or_dictionary, tag_id]
+  allowed_tag_ids: [0, 1, 2, 3]
+mavlink:
+  connection: udpin:0.0.0.0:14550
+  target_system: 1
+  target_component: 1
+  primary_pose_source: LOCAL_POSITION_NED_plus_ATTITUDE_QUATERNION
+  requested_position_rate_hz: 50
+  requested_attitude_rate_hz: 50
+  wire_quaternion_order: wxyz
+  wire_attitude_direction: body_to_navigation_after_verified_adapter
+  apply_display_repr_offset: false
+  log_optional_odometry_for_diagnostics: true
+  unknown_odometry_frame_policy: error
+  on_estimator_reset: segment_unless_known_reset_transform
+timing:
+  camera_clock_domain: camera_boot
+  telemetry_clock_domain: fc_boot
+  mapping: fc_time_ns = scale * camera_time_ns + offset_ns + capture_timestamp_offset_ns
+  mapping_source: measured_sync_samples
+  scale: null
+  offset_ns: null
+  capture_timestamp_offset_ns: null
+  sync_sigma_ns: null
+  capture_timestamp_reference: exposure_midpoint
+  max_bracket_gap_ms: 50
+  max_extrapolation_ms: 0
+  position_interpolation: linear
+  attitude_interpolation: shortest_arc_slerp
+  on_missing_sync: reject_production
+gating:
+  values_are_initial_tuning_defaults: true
+  require_convex_non_degenerate_corners: true
+  minimum_quad_area_px2: 25.0
+  maximum_hamming_distance: 1
+  minimum_apriltag_decision_margin: 55.0
+  maximum_corner_euclidean_rms_px: 2.0
+  minimum_positive_corner_depth_m: 0.01
+  log_all_rejected_detections: true
+  initial_reprojection_threshold_is_diagnostic_only: true
+uncertainty:
+  weights_are_heuristic_until_validated: true
+  corner_sigma_px: 0.7
+  fallback_odometry_rotation_sigma_rad: [0.05, 0.05, 0.08]
+  fallback_odometry_translation_sigma_m: [0.1, 0.1, 0.1]
+  fallback_sigma_reference_interval_s: 0.1
+  fallback_sigma_time_scaling: sigma_times_sqrt_dt_over_reference_interval
+  unknown_covariance_policy: mark_unknown_use_explicit_heuristic_not_zero
+  start_attitude_prior_sigma_rad: [0.05, 0.05, 0.1]
+  start_translation_reference: fixed_start_xy_and_finite_measured_start_height_prior
+  relative_covariance_policy: document_correlations_or_conservative_empirical_model
+  add_height_prior_from_same_px4_source: false
+  add_attitude_prior_at_every_pose_from_same_px4_source: false
+  independent_height_sigma_m: null
+  independent_attitude_sigma_rad: null
+  notes: Do not double-count correlated PX4 pose publications or derived measurements. Fallback weights require
+    sensitivity validation.
+# Required backend algorithm: weighted Gauss-Newton, with explicit SE(3) updates.
+optimization:
+  enabled: true
+  mode: offline_batch
+  solver: gauss_newton
+  backend: explicit_python_gauss_newton
+  permitted_alternative_backend: gtsam_GaussNewtonOptimizer_with_planar_tag_custom_factors
+  silent_solver_substitution: false
+  visual_factor_mode: raw_corner_reprojection
+  tag_state: planar_x_y_theta
+  optimize_drone_trajectory: true
+  optimize_tag_xy_yaw: true
+  optimize_tag_z: false
+  optimize_camera_extrinsic: false
+  optimize_intrinsics: false
+  optimize_tag_size: false
+  optimize_time_offset: false
+  odometry_constraints: immutable_mavlink_relative_between_keyframes
+  absolute_px4_prior_at_every_pose: false
+  start_translation_constraint: fixed_start_xy_and_finite_measured_start_height_prior
+  start_rotation_constraint: finite_initial_attitude_prior_aligning_NED
+  require_connected_surveyed_anchor: true
+  allow_anchor_free_debug_run: false
+  robust_loss: huber_block_irls
+  robustify_factor_types: [pixel, motion]
+  huber_delta_whitened: 1.345
+  linear_solver: sparse_lsmr_or_sparse_qr
+  linear_damping: 0.0
+  explicit_matrix_inverse: false
+  linear_rank_deficiency_policy: diagnose_failure_not_silent_minimum_norm
+  pose_update: right_SE3_retraction
+  pose_tangent_order: [rx_rad, ry_rad, rz_rad, tx_m, ty_m, tz_m]
+  maximum_iterations: 100
+  relative_cost_tolerance: 1.0e-08
+  translation_step_tolerance_m: 1.0e-06
+  rotation_step_tolerance_rad: 1.0e-06
+  gradient_infinity_tolerance: 1.0e-06
+  line_search:
+    enabled: true
+    initial_alpha: 1.0
+    shrink_factor: 0.5
+    minimum_alpha: 1.0e-06
+    require_actual_robust_cost_decrease: true
+    require_positive_observed_corner_depth: true
+    on_no_valid_step: report_failure_no_automatic_LM_fallback
+  keyframes:
+    minimum_interval_s: 0.1
+    translation_trigger_m: 0.1
+    rotation_trigger_rad: 0.08726646259971647
+    force_on_new_tag_or_anchor: true
+    force_at_start_event: true
+    observation_time_policy: own_pose_or_explicit_interpolated_state_never_nearest_pose_without_motion_model
+# Enter actual surveyed tag-centre x/y and uncertainty before enabling an anchor.
+known_tags:
+- enabled: false
+  family_or_dictionary: tag16h5
+  tag_id: 0
+  frame: ground_start_NED
+  prior_type: position_xy
+  position_m: [null, null, 0.0]
+  position_sigma_xy_m: [null, null]
+  surveyed_yaw_rad: null
+  surveyed_yaw_sigma_rad: null
+  measurement_notes: Fill real surveyed tag CENTRE North/East and uncertainty, then enable. Z must be 0. Unknown
+    yaw stays null.
+legacy_replay:
+  allow_assumed_pose: false
+  assumed_height_above_floor_m: 0.5
+  assumed_drone_world_z_m: -0.5
+  assumed_roll_rad: 0.0
+  assumed_pitch_rad: 0.0
+  require_explicit_ground_datum_or_user_confirmed_rebased_coordinates: true
+  mark_every_output_approximate: true
+  preserve_old_gates_separately: true
+  never_treat_legacy_xy_or_tag_estimates_as_survey_truth: true
+# Independent measured tags are checked only after fitting; not anchor constraints.
+evaluation:
+  held_out_survey_file: held_out_tag_survey.yaml
+  load_survey_only_after_fit: true
+  do_not_use_for_initialization_or_weight_tuning: true
+  detections_of_held_out_tags_may_be_used_as_unknown_landmarks: true
+  error_metric: horizontal_xy_in_fixed_NED_ground_start_frame
+  compare_initial_and_optimized: true
+  align_to_held_out_truth: false
+  if_no_survey_available: independent_accuracy_not_evaluated
+output:
+  directory: mapping_results
+  immutable_raw_logs: true
+  log_no_detection_frames: true
+  record_images_during_commissioning: true
+  save_optimized_trajectory: true
+  save_tag_covariance_and_status: true
+  save_anchor_residuals: true
+  include_config_and_software_hash: true
+  publish_to_flight_controller: false
+  save_initial_ground_intersections: true
+  save_optimization_iteration_history: true
+  save_tag_floor_yaw: true
+  tag_world_z_m: 0.0
+  save_assumptions_and_error_diagnostics: true
+  save_independent_evaluation: true

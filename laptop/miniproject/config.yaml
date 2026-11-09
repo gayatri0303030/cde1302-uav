@@ -1,0 +1,237 @@
+# Mini-project tunables.  Change numbers here, not in the code.
+# Frames: local NED, origin at the takeoff point, x = North (the nose direction at
+# power-up), y = East (to the right of the nose), z = Down.
+
+tag:
+  # PRINTED side length of the black square of the tag, in metres.  The detector's
+  # range scales linearly with this: a 10 % error here is a 10 % error in distance.
+  # 0.12 is the value compiled into the drone firmware (TAG_SIZE in main/at_detect.c).
+  size_m: 0.12
+
+camera:
+  fps: 0            # 0 = firmware default (~10); the lab guide suggests 5 in flight
+  quality: 0        # JPEG quality, 0 = firmware default
+  sensor:
+    # Camera CHIP settings sent to the drone at the start of every run.  Needs the camera-settings
+    # firmware patch (FLASH_CAMERA_SETTINGS.md); older firmware ignores them and the run carries on.
+    # null = leave the drone's own value.  One run only: --sensor ae_level=-2.  Live tuning while
+    # watching the --show window: python camera_settings.py --esp-ip <ip> -i
+    brightness: null     # -3..3   firmware boots with +1; try 0 or -1 against glare
+    contrast: null       # -3..3
+    ae_level: null       # -5..5   auto-exposure target; lower = darker picture (try -2)
+    aec: null            # 1 = auto exposure, 0 = manual (then set aec_value)
+    aec_value: null      # manual exposure time (sensor lines); camera_settings.py shows the live one
+    agc: null            # 1 = auto gain, 0 = manual (then set agc_gain)
+    agc_gain: null       # 0..64 manual gain
+    gainceiling: null    # highest gain auto gain may use (raw sensor value)
+    sharpness: null      # -3..3
+    denoise: null        # 0..8
+  mount:
+    # Only used with --mount-config config; normally the mount comes from
+    # optimization_comparison/laptop/mapper_config_29_Oct.yaml.
+    # Camera pitched nose-down by this angle (degrees below horizontal, nose-down positive).
+    # Taken from laptop/tag_debug.py (CAM_PITCH_DEG = 45).  VERIFY on the real drone:
+    # the self-check column `down_m` in observations.csv must equal the flight height
+    # (about 0.5 m) for a tag lying on the floor.
+    pitch_deg: 45.0   # set_camera_mount.py 2026-11-05 10:09
+    offset_fwd_m: 0.095   # set_camera_mount.py 2026-11-05 10:09
+    offset_right_m: 0.0
+    offset_down_m: 0.025   # set_camera_mount.py 2026-11-05 10:09
+
+gate:
+  # A detection must pass ALL of these to count towards a tag position.
+  min_margin: 55.0          # firmware gate (decision margin > 55)
+  min_margin_h0: 35.0       # 3 Nov: a PERFECT decode (hamming 0) counts from margin > 35 (glare lowers the
+                            # contrast; D1/D2 logs: 146 real-tag frames at 35-55 were thrown away, and no
+                            # wrong ID ever decoded perfectly at 35-55).  0 = off
+  max_hamming: 0            # 5 Nov: 1 -> 0 = only PERFECT decodes count (every ghost in D13-D15 needed a 1-bit fix;
+                            # real tags lose ~3 % of frames).  1 = old, looser
+  known_ids: [23, 28, 1, 7]  # 7 Nov final field: home 23, anchors 28, 1, 7.  (was [20, 5, 11, 12]) 6 Nov: home tag + anchors sit at KNOWN spots, a 1-bit-corrected read of them is fine
+  max_hamming_known: 1        # (D21: all 6 reads of tag 20 at the landing were 1-bit -> thrown away -> blind landing)
+  allowed_ids: []           # [] = any ID.  If the GAs announce the IDs, list them, e.g. [0, 1, 2, 3]
+  max_pose_err: 0.5         # reprojection error limit used by the firmware
+  max_range_m: 1.4         # 2 Nov: camera at 23 deg, 0.8 m flights -> 1.5 m with --height 0.8 (+(h-0.5)/3). Real tags read cleanly to 1.4-1.7 m
+  far_range_m: 1.8          # 3 Nov D2: tag 0 decoded perfectly (hamming 0, margin 158-183) at 1.53-1.57 m and
+  far_min_margin: 100.0     # was thrown away as too far.  Beyond max_range_m, up to far_range_m, a frame
+                            # counts only if it is that clean (hamming 0, margin >= far_min_margin)
+  edge_px: 8                # reject tags whose centre is this close to the image border
+  max_yaw_rate_rad_s: 0.6   # pose lookup is unreliable while the drone turns fast
+
+timing:
+  # Where the pose is looked up: capture_time = frame_arrival - frame_age + correction.
+  capture_correction_s: 0.0 # extra shift of the capture time (+ = later). Tune with the sync test.
+  pose_latency_s: 0.03      # telemetry is this old when it arrives
+  max_pose_gap_s: 0.35      # do not interpolate across a telemetry dropout longer than this
+  edge_tol_s: 0.10
+
+estimate:
+  inlier_radius_m: 0.20     # observations farther than this from the median are discarded
+  min_obs: 3                # CONFIRM an ID only after accepted sightings in this many DISTINCT camera
+                            # frames (false-ID guard); unconfirmed IDs never enter the target list
+
+flight:
+  takeoff_wait_s: 12.0      # README: --takeoff-wait 12 for trajectories
+  max_speed_mps: 0.30       # same cap as laptop/send_trajectory.py
+  dt_s: 0.05                # trajectory upload period (the ESP32 nav loop rate)
+  post_land_observe_s: 8.0  # keep logging after the land command
+  stale_telemetry_s: 3.0    # land if no telemetry for this long
+  connect_timeout_s: 30.0
+  expected_altitude_m: 0.5  # CRUISE_ALT_M in the firmware; only used for the self-check
+  # Safety guard (30 Oct F3 crash: PX4's position estimate jumped 2.4 m at lift-off and the drone
+  # flew 1.5 m back into the wall).  Lands as soon as one of these trips.  Normal flights so far:
+  # jumps <= 0.65 m/s, take-off drift <= 0.62 m, path error <= 0.6 m.
+  guard_enabled: true
+  max_jump_m: 1.0           # a position update moved more than this ...
+  max_jump_speed_mps: 1.2   # ... AND faster than this -> estimator reset -> land
+  takeoff_max_drift_m: 1.0  # land if this far from the start spot before the trajectory starts
+  max_path_error_m: 1.2     # land if this far from the planned path (0 = off) ...
+  path_error_samples: 2     # ... on this many position updates in a row (~1 per second)
+
+search:
+  # Autonomous search (plan_search.py / run_search.py).  Frame: start frame, origin = takeoff
+  # point, +x = nose, +y = right.  The AREA is NOT here on purpose: type it on the command line.
+  speed_mps: 0.20             # cruise speed; hard cap 0.30 (trajectory sender)
+  boundary_margin_m: 0.30     # stay this far inside the given boundary (open-loop drift)
+  corner_radius_m: 0.25
+  accel_mps2: 0.12
+  lateral_accel_mps2: 0.12
+  target_coverage: 0.97       # share of the achievable cells the lanes must cover
+  min_tag_px: 14.0            # floor tag must look this tall (pixels) to count as seen
+  altitude_m: 0.5
+
+anchors:
+  # Tags laid at KNOWN spots (tape-measured from the start circle: metres ahead of the nose, right).
+  # Change them here for the demo; --home-tag/--home-tag-at/--anchor/--anchor-at override one run.
+  home_tag: 23                # 7 Nov final field (was 20). take-off / landing tag: re-sets (0, 0) after take-off, drift check, landing
+  home_tag_at: [0.75, 0.0]    # 23 deg camera at 0.5 m sees 0.48-1.20 m ahead: 0.75 keeps it mid-picture
+  map_tag: 28                 # 7 Nov final field (was 5). the optimisation pins the map to this tag (2 Nov: replaces tag 3; IDs 0-21 only)
+  map_tag_at: [4.0, 0.0]
+  extra_map_tags:             # 5 Nov: more known tags, same job as map_tag.  The search needs at least ONE
+                              # of map_tag + these (plus tag 20); every one seen pins the optimisation.
+    # 5 Nov D7-D11: every run measured 11 on the RIGHT (E +1.2..+1.6) and 12 on the LEFT (E -0.8..-1.2),
+    # so they are taped the other way round to the plan.  Config now matches the FLOOR.  If you re-tape
+    # them as planned (11 left, 12 right), swap these two lines back.
+    1: [2.0, 1.0]             # 2 m ahead, 1 m RIGHT of the take-off spot (as taped on 5 Nov)
+    7: [2.0, -1.0]            # 2 m ahead, 1 m LEFT
+
+yaw:
+  # How fast the nose may turn when it follows the path (--yaw-follow, outward loops).  Sent to the
+  # drone with every trajectory; needs the yaw v2 firmware (the first yaw-follow patch ignores these
+  # and turns up to ~115 deg/s).  Change here, no reflash needed.
+  rate_max_dps: 8             # 7 Nov 23:00: 5 -> 8 (less time drifting in the corner turns). top turn rate, deg/s (3 Nov: 30 -> 15; at 15-25 deg/s only 31% of tag
+                              # frames decoded cleanly in D2, 74% when turning slower)
+  accel_max_dps2: 5           # how quickly the turn rate builds up and dies away, deg/s^2
+
+tuning:
+  # =====================================================================================
+  #  SEARCH MISSION KNOBS - change these after each run, save, run again.  Nothing else
+  #  needs touching.  Check a change first with:  python search_mission.py  (draws
+  #  trajectories/search_plan.png and prints the times).  Distances from the PAD CENTRE.
+  # =====================================================================================
+  # ---- the straight run-out from the pad to the near tip of the ellipse ----------------
+  tip_x_m: null               # fix the tip this far ahead (m), e.g. 1.4.  null = planner picks in min..max
+  tip_x_min_m: 1.3            # shortest run-out the planner may use
+  tip_x_max_m: 1.6            # longest (3 Nov runs used 1.95).  Lower = shorter run-out
+  lead_speed_mps: 0.18        # speed on that straight (nothing to search there; tags 0/1 still read)
+  # ---- ellipse ----------------------------------------------------------------------------
+  tip_turn_s: 8.0             # hover at the tip while the nose turns 180 deg to face out.  A full turn at
+                              # 15 deg/s needs 13.5 s; shorter = the nose finishes turning on the ellipse
+                              # (saves time, the first metre of the ellipse is seen a bit less)
+  top_hold_s: 1.5             # hover at the far tip, nose on tag 5
+  speed_mps: 0.15             # main path speed (7 Nov 22:00: 0.08 -> 0.15, faster straights; nose rate unchanged)
+  search_speed_mps: 0.07      # backup loop speed (0.10 -> 0.07)
+  enough_frames: 16           # planner: every spot + one anchor in view this many frames, then the fastest
+  # ---- loop SIZES (5 Nov, after D7-D11): [length, width] in metres, both through the same tip --------
+  main_shape: lanes          # 7 Nov 21:30: lanes = the drawn path (nose along the path, columns + top line);
+                              # square = rounded square (main_loop_m etc. below); ellipse = the old loop
+  lanes_y_m: [-1.55, 1.10]    # lanes: the LEFT / RIGHT column (m right of the pad line) - 0.2 m outside the spots
+  lanes_x_m: [1.17, 4.5]      # lanes: near row (0.2 m short of the near spots) / the top line (m ahead).
+                              # 4.5: PX4 overshoots ~x1.2 -> really ~3.75, the far spots + 28 just ahead
+  apex_x_m: 2.2               # lanes: where the V from the pad meets the centre line (m ahead)
+  main_loop_m: [4.1, 3.35]    # 7 Nov 19:10: the search area's edge 0.1 m further out on every side
+                              # (area 3.6 x 3.15 -> x 0.8..4.6, y -1.9..+1.45).  F4 / F8 loop: [2.0, 1.6], nose out, centre [2.7, 0.0], fillet 0.4
+  main_nose: in               # in = camera faces INTO the loop; the loop starts and ends straight ahead of
+                              # the pad and closes with a U-turn onto the look point, nose facing the pad
+  main_centre_m: [2.7, -0.225]   # centre of the REAL area (it is 1.8 m left / 1.35 m right of the pad line)
+  main_fillet_m: 0.5          # corner radius (m): smooth corners, the corner spots still mid-picture
+  turn_home_dps: 20           # nose rate in the closing U-turn (the loop itself uses yaw: rate_max_dps)
+  # ---- anchor fix (7 Nov 19:10): PX4's position wanders 0.3-0.9 m during the loop (F5-F8: anchors 1 / 7
+  # read 0.3-0.9 m off their taped spots, very consistently).  The loop is flown one side at a time;
+  # before each side the latest clean read of these anchors says how far off PX4 is and the rest of
+  # the path is shifted by that much, so the drone flies the loop where it really is on the floor.
+  anchor_fix: false           # 7 Nov 21:30: OFF - a fixed shift was wrong (PX4's error grows with distance)
+  anchor_fix_ids: [7, 1]      # which known tags to use (anchors: positions).  28 could be added
+  anchor_fix_max_m: 0.4       # never shift more than this (safety: a bad read can't send it far)
+  anchor_fix_reject_m: 1.2    # a read saying PX4 is further off than this is ignored as wrong
+  anchor_fix_min_frames: 8    # clean (0-bit) frames of the anchor needed in the window
+  anchor_fix_window_s: 45     # only reads from the last this-many seconds count (PX4's error changes)
+  main_waist_m: 1.3           # 7 Nov dog bone: width in the middle (lobes = main_loop_m width)
+  main_notch_m: 0.15           # dog bone: each end dented in this much
+  opt_min_frames: 30          # end-of-run list: optimised position only for tags seen in >= this many frames
+  backup_loop_m: [1.4, 0.7]   # BACKUP ellipse, flown only if < 3 targets or no map anchor.  null = planner
+  backup_tip_x_m: 1.85        # backup's near tip this far ahead (centred in the area, like the 3 Nov loop).  null = main tip
+  # ---- way back and landing --------------------------------------------------------------
+  blind_home: false           # 6 Nov 22:45: OFF again (tag-20 + creep landing below). true = after the search (backup incl.) fly straight back to
+                              # (0, 0) by PX4, down to land_descend_to_m, then LAND - no tag-20 correction.  false = old tag-20 landing.
+                              # (old text:) true = fly straight back to (0, 0) by PX4 only, no tag-20 look,
+                              # no drift correction, no pad re-aim (or --blind-home for one run)
+  return_speed_mps: 0.20      # back to the look point and onto the pad
+  look_distance_m: 0.75     # stop with tag 20 this far ahead to measure the drift (0.85 with a 30 deg camera)
+  home_look_s: 2.5            # look at tag 20 at most this long (stops as soon as 5 clean reads arrive)
+  pad_tolerance_m: 0.06       # over the pad: re-aim if further than this from the centre
+  pad_tries: 2                # at most this many re-aims
+  land_descend_to_m: 0.30     # 7 Nov 22:00: 0.20 -> 0.30 (at "0.20" it really sank to 0.13-0.16 m in F7/F12 and
+                              # could not see tag 23; F5 stopped at 0.27 m and read it 7x). descend UNDER POSITION HOLD to this height over the pad, then LAND (PX4's
+                              # LAND from 0.8 m takes ~8 s at 0.1 m/s and drifts).  0 = old way
+  land_descend_speed_mps: 0.15   # 6 Nov: slower, it now goes down to 5 cm
+  land_offset_right_m: 0.0    # it lands LEFT of the box centre? set + by how far (m).  Right of it: -
+  land_offset_ahead_m: 0.0    # it lands short of the centre (towards you)? set + .  Past it: -
+  land_target_m: [1.02, 0.0]  # 6 Nov: after tag 20 is read on the way back, fly over THIS point (tag 20)
+                              # instead of the pad centre.  null = pad centre (+ land_offset_*)
+  land_creep_m: 0.30          # 6 Nov: after the descent, creep this far along the nose (towards the pad), then LAND.  0 = off
+  land_creep_right_m: 0.0     # 6 Nov 23:40: ... and this far to the NOSE's right (nose faces the pad -> room's left).  0 = off
+  land_low_look_s: 3.0        # 6 Nov 23:56: at land_descend_to_m, read tag 20 (just ahead of the nose) this long;
+                              # land_target_m [0.97, 0] stops 0.22 m short of it so it is in view at 0.15 m.  Then
+                              # land_creep_m forward + land_creep_right_m right, measured FROM TAG 20, and LAND
+  land_creep_speed_mps: 0.08
+  land_max_jump_m: 0.25        # PX4 position moving more than this while hovering low (no tag read) = land right there
+  # ---- take-off ---------------------------------------------------------------------------
+  takeoff_wait_max_s: 12.0    # wait for the climb to 0.5 m at most this long (moves on as soon as it is up)
+
+track_loop:
+  # Laptop correction loop (search mission): PX4 leaves drone 5 0.2-0.3 m off the path and never
+  # pulls it back, so the laptop measures the error and keeps sending an offset the drone adds to
+  # its setpoints (a PI controller around PX4).  Needs the track-loop firmware patch
+  # (FLASH_TRACK_LOOP.md); on firmware without it the run says "correction loop off" and flies as
+  # before.  --no-track-loop turns it off for one run.
+  enabled: true
+  kp: 0.3                     # immediate push back, per metre of error
+  ki: 0.35                    # how fast it learns the steady offset (1/s): ~0.25 m learned in ~3 s
+  max_m: 0.35                 # never correct by more than this
+  lag_s: 0.4                  # compare with where the path was this long ago (PX4 + radio delay)
+  rate_hz: 5                  # how often the offset is sent
+
+search_area:
+  # The real test area (NUS drawing), measured from the PAD CENTRE: x = metres ahead (towards the
+  # search area), y = metres to the RIGHT.  Used by run_baseline.py --mission search and
+  # search_mission.py.  MEASURE ON THE DAY and correct these.
+  x: [0.9, 4.5]               # 0.45 m half-pad + 0.45 m gap, then 3.6 m deep
+  y: [-1.8, 1.35]             # 7 Nov 19:10: NUS drawing - 1.8 m to the LEFT, 1.35 m to the RIGHT of the pad's centre line
+  spots:                      # possible tag spots (circles on the drawing), 0.45 m in from each side edge
+    - [1.37, -1.35]           # 7 Nov 19:10: y moved with the real (off-centre) area (was -/+1.125).
+    - [2.67, -1.35]           # Only used to draw / score the plan - the fixed loop does not aim at them.
+    - [3.97, -1.35]
+    - [1.37, 0.90]
+    - [2.67, 0.90]
+    - [3.97, 0.90]
+  targets: 3                  # tags to find besides the home tag and the map anchor
+  anchor_at: [4.0, 0.0]       # 6 Nov: = anchors: map_tag_at.  where the map anchor (anchors: map_tag) is taped in THIS area
+  height_m: 0.80
+  speed_mps: 0.12             # 3 Nov: 0.2 -> 0.12 (slower = sharper frames); bends slower still
+  search_speed_mps: 0.10      # the backup ellipse is flown slower
+  look_distance_m: 0.75     # on the way back, stop with tag 20 this far ahead to check the position
+  outward_drift_m: 0.0        # D1 + D2 (3 Nov): with the nose out, drone 5 sits 0.2-0.3 m towards its nose
+                              # (PX4's own track).  The ellipse is chosen so every spot + the anchor is
+                              # seen with that drift AND without it
+  outward_pull_m: 0.0          # send the ellipse this much smaller on every side, so with the drift the
+                              # drone flies the planned one.  0 = send the planned ellipse as it is

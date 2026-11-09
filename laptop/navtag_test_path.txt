@@ -1,0 +1,10 @@
+# Waypoint route (map frame: x=north, y=east); take off from (0, 0).
+# Leg 1 ends 0.5 m from tag 13 at (0.0, -1.5): tags don't affect the flight.
+0.0 -1.0
+# Return to start.
+0.0 0.0
+# Original zig-zag route.
+0.5 0.2
+1.0 0.0
+1.5 0.3
+2.0 0.0

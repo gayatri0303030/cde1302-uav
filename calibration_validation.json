@@ -1,0 +1,59 @@
+{
+  "method": "Five folds; fit intrinsics on training views, fit only board pose in each held-out image.",
+  "folds": [
+    {
+      "fold": 1,
+      "training_views": 23,
+      "held_out_views": 6,
+      "held_out_rms_px": 0.25806423702756004,
+      "fx": 183.69171035630862,
+      "fy": 183.38233139860859,
+      "cx": 161.29919834627054,
+      "cy": 120.1575129699639
+    },
+    {
+      "fold": 2,
+      "training_views": 23,
+      "held_out_views": 6,
+      "held_out_rms_px": 0.2999760047351726,
+      "fx": 182.29137370346064,
+      "fy": 181.6631894617099,
+      "cx": 160.77965273504327,
+      "cy": 120.34052049277543
+    },
+    {
+      "fold": 3,
+      "training_views": 23,
+      "held_out_views": 6,
+      "held_out_rms_px": 0.3187314489856452,
+      "fx": 183.86728879408054,
+      "fy": 183.49428984308372,
+      "cx": 160.885716533771,
+      "cy": 119.63593803138741
+    },
+    {
+      "fold": 4,
+      "training_views": 23,
+      "held_out_views": 6,
+      "held_out_rms_px": 0.29355718380052553,
+      "fx": 183.77050472094012,
+      "fy": 183.26750909754904,
+      "cx": 161.31836979590685,
+      "cy": 119.66207068420674
+    },
+    {
+      "fold": 5,
+      "training_views": 24,
+      "held_out_views": 5,
+      "held_out_rms_px": 0.3333282714852223,
+      "fx": 182.94208407847435,
+      "fy": 182.5177348349838,
+      "cx": 160.8893581990152,
+      "cy": 120.38258445311894
+    }
+  ],
+  "limitations": [
+    "320x240 source images; marker codes were mostly too small to decode, so full checkerboard corners were used.",
+    "Internal reprojection checks do not establish external measurement accuracy."
+  ]
+}

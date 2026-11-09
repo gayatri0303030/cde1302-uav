@@ -1,0 +1,38 @@
+build/
+.cache/
+.vscode/
+
+# Host build of the in-tree AprilTag detector (laptop/apriltag_host.py)
+laptop/.apriltag-host/
+
+# MATLAB / Simulink
+slprj/
+*.slxc
+*.autosave
+*.asv
+*.m~
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+venv/
+.venv/
+
+# macOS
+.DS_Store
+
+# Credentials: sdkconfig holds the Wi-Fi SSID and password.
+# Copy sdkconfig.example to sdkconfig and fill in your own network.
+sdkconfig
+sdkconfig.old
+
+# Flight logs, run outputs and backups (large; kept locally)
+laptop/logs/
+logs/
+results/
+*.ulg
+*.zip
+BACKUP_*
+laptop/LOCKED_TRAJ_*/
+_replaced_by_*/

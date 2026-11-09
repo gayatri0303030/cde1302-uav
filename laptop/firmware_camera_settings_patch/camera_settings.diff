@@ -1,0 +1,27 @@
+--- a/main/wifi_task.c
++++ b/main/wifi_task.c
+@@ -1,4 +1,5 @@
+ #include "wifi_task.h"
++#include "camera_settings.h"
+ #include "mavlink_task.h"
+ #include "nav_task.h"
+ #include "at_detect.h"
+@@ -409,6 +410,8 @@
+                     handle_nav_tags(cmd_buf, len);
+                 } else if (cmd_buf[1] == CMD_SET_PEERS) {
+                     handle_peers(cmd_buf, len);
++                } else if (cmd_buf[1] == CMD_CAMERA_SETTINGS) {
++                    camera_settings_handle(cmd_buf, len, rx_sock, &source);
+                 } else if (len >= (int)sizeof(wifi_cmd_pkt_t)) {
+                     handle_command((const wifi_cmd_pkt_t *)cmd_buf);
+                 }
+--- a/main/CMakeLists.txt
++++ b/main/CMakeLists.txt
+@@ -7,6 +7,7 @@
+         "nav_task.c"
+         "at_detect.c"
+         "camera_stream.c"
++        "camera_settings.c"
+         "wifi_task.c"
+         "odom.c"
+     INCLUDE_DIRS "."

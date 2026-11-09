@@ -1,0 +1,63 @@
+# Mini-project tunables.  Change numbers here, not in the code.
+# Frames: local NED, origin at the takeoff point, x = North (the nose direction at
+# power-up), y = East (to the right of the nose), z = Down.
+
+tag:
+  # PRINTED side length of the black square of the tag, in metres.  The detector's
+  # range scales linearly with this: a 10 % error here is a 10 % error in distance.
+  # 0.12 is the value compiled into the drone firmware (TAG_SIZE in main/at_detect.c).
+  size_m: 0.12
+
+camera:
+  fps: 0            # 0 = firmware default (~10); the lab guide suggests 5 in flight
+  quality: 0        # JPEG quality, 0 = firmware default
+  mount:
+    # Camera pitched nose-down by this angle (degrees, nose-down positive).
+    # Taken from laptop/tag_debug.py (CAM_PITCH_DEG = 45).  VERIFY on the real drone:
+    # the self-check column `down_m` in observations.csv must equal the flight height
+    # (about 0.5 m) for a tag lying on the floor.
+    pitch_deg: 45.0
+    offset_fwd_m: 0.02      # camera ahead of the body origin (tag_debug.py: 2 cm)
+    offset_right_m: 0.0
+    offset_down_m: 0.0
+
+gate:
+  # A detection must pass ALL of these to count towards a tag position.
+  min_margin: 55.0          # firmware gate (decision margin > 55)
+  max_hamming: 1            # firmware gate
+  max_pose_err: 0.5         # reprojection error limit used by the firmware
+  max_range_m: 1.5          # farther tags are noisy; the lab saw 0.75-0.92 m
+  edge_px: 8                # reject tags whose centre is this close to the image border
+  max_yaw_rate_rad_s: 0.6   # pose lookup is unreliable while the drone turns fast
+
+timing:
+  # Where the pose is looked up: capture_time = frame_arrival - frame_age + correction.
+  capture_correction_s: 0.0 # extra shift of the capture time (+ = later). Tune with the sync test.
+  pose_latency_s: 0.03      # telemetry is this old when it arrives
+  max_pose_gap_s: 0.35      # do not interpolate across a telemetry dropout longer than this
+  edge_tol_s: 0.10
+
+estimate:
+  inlier_radius_m: 0.20     # observations farther than this from the median are discarded
+  min_obs: 3                # a tag seen fewer times than this is flagged UNCONFIRMED (false-ID guard)
+
+flight:
+  takeoff_wait_s: 12.0      # README: --takeoff-wait 12 for trajectories
+  max_speed_mps: 0.30       # same cap as laptop/send_trajectory.py
+  dt_s: 0.05                # trajectory upload period (the ESP32 nav loop rate)
+  post_land_observe_s: 8.0  # keep logging after the land command
+  stale_telemetry_s: 3.0    # land if no telemetry for this long
+  connect_timeout_s: 30.0
+  expected_altitude_m: 0.5  # CRUISE_ALT_M in the firmware; only used for the self-check
+
+search:
+  # Autonomous search (plan_search.py / run_search.py).  Frame: start frame, origin = takeoff
+  # point, +x = nose, +y = right.  The AREA is NOT here on purpose: type it on the command line.
+  speed_mps: 0.20             # cruise speed; hard cap 0.30 (trajectory sender)
+  boundary_margin_m: 0.30     # stay this far inside the given boundary (open-loop drift)
+  corner_radius_m: 0.25
+  accel_mps2: 0.12
+  lateral_accel_mps2: 0.12
+  target_coverage: 0.97       # share of the achievable cells the lanes must cover
+  min_tag_px: 14.0            # floor tag must look this tall (pixels) to count as seen
+  altitude_m: 0.5

@@ -1,0 +1,6 @@
+# Offline comparison only, Python 3.10+.
+numpy>=1.24
+scipy>=1.10
+opencv-python>=4.6,<5
+matplotlib>=3.6
+PyYAML>=6.0

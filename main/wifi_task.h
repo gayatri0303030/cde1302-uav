@@ -1,0 +1,232 @@
+#pragma once
+
+#include <stdint.h>
+#include "vfh.h"
+
+/* ---------------------------------------------------------------------------
+ * FreeRTOS placement
+ * --------------------------------------------------------------------------- */
+#define WIFI_TASK_CORE      0
+#define WIFI_TASK_PRIORITY  2
+#define WIFI_TASK_STACK     12288
+
+/* Packet type bytes */
+#define WIFI_PKT_TELEM       0x01
+#define WIFI_PKT_CMD         0x02
+#define WIFI_PKT_TOF_DEBUG   0x03   /* debug: raw front-sensor 8×8 frame */
+#define WIFI_PKT_AT_DEBUG    0x04   /* debug: live AprilTag detections   */
+
+/* Separate UDP port for ToF debug stream so it doesn't conflict with comms.py */
+#define WIFI_TOF_DEBUG_PORT  5007
+
+/* Separate UDP port for the live AprilTag debug stream (tag_debug.py) */
+#define WIFI_AT_DEBUG_PORT   5008
+
+/* On-demand JPEG camera preview (camera_stream.c -> camera_stream.py). */
+#define WIFI_CAMERA_STREAM_PORT  5009
+
+/* Pixels per sensor frame (8×8 grid) — duplicated here to avoid pulling in tof_task.h */
+#define WIFI_TOF_DEBUG_PIXELS  64
+
+/* Command port (drone listens for laptop commands on this UDP port) */
+#define WIFI_CMD_PORT        5006
+#define WIFI_MAX_FOUND_TAGS  12
+
+/* ---------------------------------------------------------------------------
+ * Telemetry packet — sent at 10 Hz over UDP to laptop.
+ * Packed so sizeof() gives the exact wire size.
+ * --------------------------------------------------------------------------- */
+typedef struct __attribute__((packed)) {
+    uint8_t  pkt_type;                      /* WIFI_PKT_TELEM                   */
+    uint8_t  drone_id;                      /* CONFIG_DRONE_ID                  */
+
+    float    ned_x;                         /* NED north (m)                    */
+    float    ned_y;                         /* NED east  (m)                    */
+    float    heading_rad;                   /* NED CW positive (rad)            */
+
+    uint8_t  nav_state;                     /* nav_state_t cast to uint8_t      */
+    int8_t   tag_id;                        /* claimed tag ID, −1 until one     */
+    float    tag_dist_m;                    /* camera range at last sighting (m)*/
+
+    uint8_t  vfh_blocked[VFH_BINS];         /* 1 = blocked, 0 = free            */
+    uint8_t  is_stuck;                      /* 1 = STUCK or RETREATING          */
+
+    uint16_t reloc_age_s;                   /* always 0xFFFF (no nav-tag fixes) */
+
+    /* Appended extension. Keep legacy fields above in their original order. */
+    uint16_t px4_hb_age_ms;
+    uint16_t px4_pos_age_ms;
+    uint16_t px4_att_age_ms;
+    uint8_t  px4_link_ok;
+    uint8_t  px4_armed;
+    uint8_t  px4_custom_main_mode;
+
+    float    ned_z;                         /* NED down (m), odom frame          */
+    float    ned_vx;                        /* NED north velocity (m/s)          */
+    float    ned_vy;                        /* NED east velocity (m/s)           */
+    float    ned_vz;                        /* NED down velocity (m/s)            */
+
+    /* Appended extension 2: full PX4 attitude for logging (raw PX4 values). */
+    float    q_w, q_x, q_y, q_z;            /* attitude quaternion (body FRD -> NED) */
+    float    roll_rate, pitch_rate, yaw_rate; /* body rates (rad/s)               */
+    float    roll_rad, pitch_rad;           /* from ATTITUDE                      */
+    uint32_t px4_pos_boot_ms;               /* PX4 time_boot_ms of position sample */
+    uint32_t px4_att_boot_ms;               /* PX4 time_boot_ms of attitude sample */
+    uint8_t  q_from_px4;                    /* 1 = ATTITUDE_QUATERNION, 0 = from euler */
+} wifi_telem_pkt_t;
+
+/* ---------------------------------------------------------------------------
+ * Command packet — received from laptop over UDP.
+ * --------------------------------------------------------------------------- */
+typedef struct __attribute__((packed)) {
+    uint8_t  pkt_type;                      /* WIFI_PKT_CMD                     */
+    uint8_t  cmd_type;                      /* CMD_GOTO / CMD_LAND / CMD_HOLD   */
+    float    goal_x;                        /* NED north (m)                    */
+    float    goal_y;                        /* NED east  (m)                    */
+    int8_t   found_tag_ids[WIFI_MAX_FOUND_TAGS]; /* −1 = unused slot           */
+} wifi_cmd_pkt_t;
+
+#define CMD_GOTO          0x01
+#define CMD_LAND          0x02
+#define CMD_HOLD          0x03
+#define CMD_SET_NAV_TAGS  0x04
+#define CMD_START         0x05   /* arm and take off */
+#define CMD_SET_PEERS     0x06   /* update nearby drone positions */
+#define CMD_CAMERA_STREAM 0x07   /* keepalive: pkt, cmd, enable, max_fps, quality */
+#define CMD_TRAJ_DATA     0x08   /* pkt, cmd, id, total(u16), offset(u16), n, n × (x,y,z) f32 */
+#define CMD_TRAJ_START    0x09   /* pkt, cmd, id, dt_ms(u16) */
+#define CMD_TRAJ_NUDGE    0x0B   /* pkt, cmd, north(f32), east(f32): laptop correction loop;
+                                    reply "ENDG" + sent n,e + applied n,e (f32) to the sender */
+
+/* Largest command datagram (a CMD_TRAJ_DATA chunk of 80 points is 968 B). */
+#define WIFI_CMD_BUF_SIZE 1024
+
+/* ---------------------------------------------------------------------------
+ * Navigation-tag packet — start offset (map_T_odom) + nav-tag IDs.
+ * --------------------------------------------------------------------------- */
+#define WIFI_MAX_NAV_TAGS   16
+
+typedef struct __attribute__((packed)) {
+    int8_t   id;
+    float    odom_x;    /* NED north in drone odom frame (m) = map_x − start_x */
+    float    odom_y;    /* NED east  in drone odom frame (m) = map_y − start_y */
+} wifi_nav_tag_entry_t;
+
+typedef struct __attribute__((packed)) {
+    uint8_t  pkt_type;      /* WIFI_PKT_CMD                                         */
+    uint8_t  cmd_type;      /* CMD_SET_NAV_TAGS                                     */
+    uint8_t  tag_count;     /* number of valid entries (≤ WIFI_MAX_NAV_TAGS)        */
+    float    start_map_x;   /* this drone's start position in map frame (NED north) */
+    float    start_map_y;   /* this drone's start position in map frame (NED east)  */
+    wifi_nav_tag_entry_t tags[WIFI_MAX_NAV_TAGS];
+} wifi_nav_tags_pkt_t;
+
+/* ---------------------------------------------------------------------------
+ * Peer drone positions — received from laptop, used for inter-drone avoidance.
+ * Positions are in map frame; nav_task converts to odom for VFH injection.
+ * --------------------------------------------------------------------------- */
+#define WIFI_MAX_PEERS  7
+
+typedef struct {
+    float map_x;    /* NED north in map frame (m) */
+    float map_y;    /* NED east  in map frame (m) */
+} wifi_peer_t;
+
+typedef struct {
+    wifi_peer_t peers[WIFI_MAX_PEERS];
+    uint8_t     count;
+    uint32_t    update_ms;  /* esp_timer ms when last CMD_SET_PEERS arrived */
+} wifi_peer_list_t;
+
+/* Thread-safe snapshot of current peer positions. */
+wifi_peer_list_t wifi_get_peers(void);
+
+/* ---------------------------------------------------------------------------
+ * ToF debug packet — sent at 10 Hz to WIFI_TOF_DEBUG_PORT.
+ * Contains the raw 8×8 distance + status grid for the front sensor only.
+ * --------------------------------------------------------------------------- */
+typedef struct __attribute__((packed)) {
+    uint8_t  pkt_type;                              /* WIFI_PKT_TOF_DEBUG           */
+    uint8_t  sensor_idx;                            /* TOF_FRONT_SENSOR_IDX         */
+    uint8_t  sensor_ok;                             /* 1 if sensor initialised      */
+    uint32_t timestamp_ms;                          /* frame timestamp from sensor  */
+    uint16_t distance_mm[WIFI_TOF_DEBUG_PIXELS];    /* raw distances, 0 = invalid   */
+    uint8_t  target_status[WIFI_TOF_DEBUG_PIXELS];  /* 5 = valid, 9 = valid-weak    */
+} wifi_tof_debug_pkt_t;
+
+/* ---------------------------------------------------------------------------
+ * AprilTag debug packet — sent at 10 Hz to WIFI_AT_DEBUG_PORT.
+ * Carries every raw detection from the most recent camera frame, so the
+ * laptop sees tags in real time (unlike the latched tag_id in telemetry).
+ * Only the first `count` det[] entries are sent on the wire.
+ * --------------------------------------------------------------------------- */
+#define WIFI_AT_DEBUG_MAX   8   /* must match AT_LIVE_MAX in at_detect.h */
+
+typedef struct __attribute__((packed)) {
+    int8_t  id;         /* tag ID                                       */
+    uint8_t hamming;    /* corrected bit errors                         */
+    float   margin;     /* decision margin (higher = more confident)    */
+    float   cx, cy;     /* tag centre in image pixels                   */
+    float   tx, ty, tz; /* camera-frame translation (m)                 */
+    float   pose_err;   /* pose reprojection error; < 0 = no pose       */
+} wifi_at_det_t;        /* 30 bytes */
+
+typedef struct __attribute__((packed)) {
+    uint8_t  pkt_type;      /* WIFI_PKT_AT_DEBUG                        */
+    uint8_t  drone_id;      /* CONFIG_DRONE_ID                          */
+    uint32_t frame_ms;      /* esp_timer ms of last processed frame     */
+    uint16_t proc_ms;       /* frame processing time (detect+pose), ms  */
+    int8_t   latched_id;    /* mission tag claim, −1 = none (telemetry) */
+    uint8_t  raw_count;     /* detections before the quality gate       */
+    uint8_t  count;         /* det[] entries that follow                */
+    wifi_at_det_t det[WIFI_AT_DEBUG_MAX];
+} wifi_at_debug_pkt_t;      /* 11-byte header + count × 30 bytes on wire */
+
+/* ---------------------------------------------------------------------------
+ * Lifecycle
+ * --------------------------------------------------------------------------- */
+
+/* Initialise WiFi station and block until IP is obtained.
+ * Call once in app_main before spawning wifi_task. */
+void wifi_task_init(void);
+
+/* FreeRTOS task entry — pin to Core 0, Priority 2.
+ *   xTaskCreatePinnedToCore(wifi_task, "wifi", WIFI_TASK_STACK,
+ *                           NULL, WIFI_TASK_PRIORITY, NULL, WIFI_TASK_CORE); */
+void wifi_task(void *arg);
+
+/* Returns true once the laptop has sent CMD_LAND. */
+bool wifi_land_requested(void);
+
+/* Clear the land-request flag (call after acting on it). */
+void wifi_clear_land_request(void);
+
+/* Returns true once the laptop has sent CMD_START. */
+bool wifi_start_requested(void);
+
+/* Clear the start-request flag (call after acting on it). */
+void wifi_clear_start_request(void);
+
+/* Gates commands: START only when READY (→ BUSY), GOTO/TRAJ_START only when
+ * FLYING, LAND ignored when READY. */
+typedef enum { MISSION_BUSY, MISSION_READY, MISSION_FLYING } mission_phase_t;
+void wifi_set_mission_phase(mission_phase_t phase);
+
+/* Returns true while the WiFi link is up (IP obtained, not disconnected). */
+bool wifi_is_connected(void);
+
+/* True while camera_stream.py is sending keepalives.  The request expires
+ * automatically, so a crashed viewer cannot leave JPEG encoding enabled. */
+bool wifi_camera_stream_enabled(void);
+
+/* Latest preview request (0 = firmware default).  viewer_ipv4 is the
+ * keepalive sender in network byte order, so the preview can follow a viewer
+ * on any laptop instead of CONFIG_HOST_IPV4_ADDR.  Returns
+ * wifi_camera_stream_enabled(). */
+typedef struct {
+    uint8_t max_fps;
+    uint8_t quality;
+    uint32_t viewer_ipv4;
+} wifi_camera_stream_req_t;
+
+bool wifi_camera_stream_get(wifi_camera_stream_req_t *out);

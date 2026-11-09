@@ -1,0 +1,5 @@
+field 3.0 x 2.0 m, height 0.55 m, pitch 25.0 deg, max range 1.2 m, target 99% detected (>= 3 frames), first 0.45 m ahead of the start not counted; overlap = passes per detected cell
+lawnmower    6 left-right lanes 0.40 m apart coverage  99.5%  passes/cell 1.88  path  10.4 m  time  58.9 s  x 0.00..2.00  y -0.60..+0.60
+lawnmower_yaw 3 left-right lanes 0.70 m apart coverage  99.6%  passes/cell 1.90  path   7.9 m  time  46.6 s  x 0.00..2.30  y -0.75..+0.75
+ellipse      inset 0.3/0.3 m, 1.0 turns   coverage  97.6%  passes/cell 1.20  path   5.9 m  time  33.0 s  x 0.00..2.27  y -0.70..+0.70
+ellipse_yaw  inset 0.4/0.6 m, 1.0 turns   coverage  99.1%  passes/cell 1.23  path   5.7 m  time  32.3 s  x 0.00..2.60  y -0.40..+0.40

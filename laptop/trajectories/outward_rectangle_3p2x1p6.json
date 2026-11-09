@@ -1,0 +1,17 @@
+{
+ "shape": "outward_rectangle",
+ "field_m": [
+  3.2,
+  1.6
+ ],
+ "height_m": 0.8,
+ "loop_length_m": 0.5,
+ "loop_width_m": 0.5,
+ "coverage": 0.95,
+ "best_coverage": 0.95,
+ "inset_m": 1.35,
+ "nose_outward_from": 163,
+ "nose_outward_to": 454,
+ "land_at_end": true,
+ "firmware": "yaw v2 patch (CMD_TRAJ_START flags 0x03 + window + yaw limits)"
+}
